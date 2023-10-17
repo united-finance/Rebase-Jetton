@@ -2,7 +2,7 @@
 #include "op-codes.func";
 #include "params.func";
 #include "helpers.func";
-#include "jetton-utils.func";
+#include "rebase-jetton-utils.func";
 
 
 const int min_tons_for_storage = 10000000; ;; 0.01 TON
@@ -15,28 +15,27 @@ const int gas_consumption = 10000000; ;; 0.01 TON
 
 (int, slice, slice, cell) load_data() inline {
   slice ds = get_data().begin_parse();
-  return (ds~load_int(64), ds~load_msg_addr(), ds~load_msg_addr(), ds~load_ref());
+  return (ds~load_uint(256), ds~load_msg_addr(), ds~load_msg_addr(), ds~load_ref());
 }
 
-() save_data (int shares, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) impure inline {
-  set_data(pack_jetton_wallet_data(shares, owner_address, jetton_master_address, jetton_wallet_code));
+() save_data (int shares, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) impure inline {
+  set_data(pack_rebase_jetton_wallet_data(shares, owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code));
 }
 
 () send_tokens (slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
   int query_id = in_msg_body~load_uint(64);
-  int share_amount = in_msg_body~load_int(64);
+  int shares_amount = in_msg_body~load_uint(256);
   slice to_owner_address = in_msg_body~load_msg_addr();
   force_chain(to_owner_address);
-  (int share, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
+  (int shares, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) = load_data();
 
-  throw_unless(704, share_amount <= 0);
-  share -= share_amount;
+  shares -= shares_amount;
 
   throw_unless(705, equal_slices(owner_address, sender_address));
-  throw_unless(706, share >= 0);
+  throw_unless(706, shares >= 0);
 
-  cell state_init = calculate_jetton_wallet_state_init(to_owner_address, jetton_master_address, jetton_wallet_code);
-  slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+  cell state_init = calculate_rebase_jetton_wallet_state_init(to_owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code);
+  slice to_wallet_address = calculate_rebase_jetton_wallet_address(state_init);
   slice response_address = in_msg_body~load_msg_addr();
   cell custom_payload = in_msg_body~load_dict();
   int forward_ton_amount = in_msg_body~load_coins();
@@ -51,7 +50,7 @@ const int gas_consumption = 10000000; ;; 0.01 TON
   var msg_body = begin_cell()
     .store_uint(op_internal_transfer, 32)
     .store_uint(query_id, 64)
-    .store_int(share_amount,64)
+    .store_uint(shares_amount,256)
     .store_slice(owner_address)
     .store_slice(response_address)
     .store_coins(forward_ton_amount)
@@ -66,21 +65,21 @@ const int gas_consumption = 10000000; ;; 0.01 TON
                      (2 * gas_consumption + min_tons_for_storage));
 
 
-  send_raw_message(msg.end_cell(), 64);
-  save_data(share, owner_address, jetton_master_address, jetton_wallet_code);
+  send_raw_message(msg.end_cell(), 64); ;; revert on errors
+  save_data(shares, owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code);
 }
 
 () receive_tokens (slice in_msg_body, slice sender_address, int my_ton_balance, int fwd_fee, int msg_value) impure {
-  (int share, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
+  (int shares, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) = load_data();
   int query_id = in_msg_body~load_uint(64);
-  int share_amount = in_msg_body~load_int(64);
-  share += share_amount;
+  int shares_amount = in_msg_body~load_uint(256);
+  shares += shares_amount;
   slice from_address = in_msg_body~load_msg_addr();
   slice response_address = in_msg_body~load_msg_addr();
   throw_unless(707,
-      equal_slices(jetton_master_address, sender_address)
+      equal_slices(rebase_jetton_master_address, sender_address)
       |
-      equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
+      equal_slices(calculate_user_rebase_jetton_wallet_address(from_address, rebase_jetton_master_address, rebase_jetton_wallet_code), sender_address)
   );
   int forward_ton_amount = in_msg_body~load_coins();
 
@@ -94,7 +93,7 @@ const int gas_consumption = 10000000; ;; 0.01 TON
     var msg_body = begin_cell()
         .store_uint(op_transfer_notification, 32)
         .store_uint(query_id, 64)
-        .store_int(share_amount, 64) ;;This
+        .store_uint(shares_amount, 256)
         .store_slice(from_address)
         .store_slice(either_forward_payload)
         .end_cell();
@@ -120,50 +119,78 @@ const int gas_consumption = 10000000; ;; 0.01 TON
     send_raw_message(msg.end_cell(), 2);
   }
 
-  save_data(share, owner_address, jetton_master_address, jetton_wallet_code);
+  save_data(shares, owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code);
 }
 
 () burn_tokens (slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
-  (int share, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
+  (int shares, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) = load_data();
   int query_id = in_msg_body~load_uint(64);
-  int share_amount = in_msg_body~load_int(64);
+  int shares_amount = in_msg_body~load_uint(256);
   slice response_address = in_msg_body~load_msg_addr();
-  throw_unless(704, share_amount <= 0);
-  share -= share_amount;
+
+  shares -= shares_amount;
 
   throw_unless(705, equal_slices(owner_address, sender_address));
-  throw_unless(706, share >= 0);
+  throw_unless(706, shares >= 0);
   throw_unless(707, msg_value > fwd_fee + 2 * gas_consumption);
 
   var msg_body = begin_cell()
       .store_uint(op_burn_notification, 32)
       .store_uint(query_id, 64)
-      .store_int(share_amount, 64)
+      .store_uint(shares_amount, 256)
       .store_slice(owner_address)
       .store_slice(response_address)
       .end_cell();
 
   var msg = begin_cell()
     .store_uint(0x18, 6)
-    .store_slice(jetton_master_address)
+    .store_slice(rebase_jetton_master_address)
     .store_coins(0)
     .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
     .store_ref(msg_body);
 
   send_raw_message(msg.end_cell(), 64);
 
-  save_data(share, owner_address, jetton_master_address, jetton_wallet_code);
+  save_data(shares, owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code);
+}
+
+(int) handle_getter_messages(int msg_value, int fwd_fee, int op, slice sender_address, slice in_msg_body) impure inline {
+  int query_id = in_msg_body~load_uint(64);
+
+  if (op == op_getter_balance) {
+    (int shares, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) = load_data();
+
+    var msg_body = begin_cell()
+    .store_uint(op_getter_balance, 32)
+    .store_uint(query_id, 64)
+    .store_uint(shares, 256)
+    .store_slice(sender_address)
+    .end_cell();
+
+    var msg = begin_cell()
+    .store_uint(0x10, 6)
+    .store_slice(rebase_jetton_master_address)
+    .store_coins(0)
+    .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_ref(msg_body);
+
+    send_raw_message(msg.end_cell(), 64);
+
+    return (true);
+  }
+
+  return (false);
 }
 
 () on_bounce (slice in_msg_body) impure {
-  in_msg_body~skip_bits(32);
-  (int share, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
+  in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
+  (int share, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) = load_data();
   int op = in_msg_body~load_uint(32);
   throw_unless(709, (op == op_internal_transfer) | (op == op_burn_notification));
   int query_id = in_msg_body~load_uint(64);
-  int share_amount = in_msg_body~load_int(64);
+  int share_amount = in_msg_body~load_uint(256);
   share += share_amount;
-  save_data(share, owner_address, jetton_master_address, jetton_wallet_code);
+  save_data(share, owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code);
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -198,6 +225,10 @@ const int gas_consumption = 10000000; ;; 0.01 TON
 
   if (op == op_burn) {
     burn_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
+    return ();
+  }
+
+  if (handle_getter_messages(msg_value, fwd_fee, op, sender_address, in_msg_body)) {
     return ();
   }
 

@@ -1,0 +1,34 @@
+#pragma version >=0.2.0;
+#include "params.func";
+
+
+cell pack_rebase_jetton_wallet_data(int shares, slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) inline {
+   return  begin_cell()
+            .store_uint(shares, 256)
+            .store_slice(owner_address)
+            .store_slice(rebase_jetton_master_address)
+            .store_ref(rebase_jetton_wallet_code)
+           .end_cell();
+}
+
+cell calculate_rebase_jetton_wallet_state_init(slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) inline {
+  return begin_cell()
+          .store_uint(0, 2)
+          .store_dict(rebase_jetton_wallet_code)
+          .store_dict(pack_rebase_jetton_wallet_data(0, owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code))
+          .store_uint(0, 1)
+         .end_cell();
+}
+
+slice calculate_rebase_jetton_wallet_address(cell state_init) inline {
+  return begin_cell().store_uint(4, 3)
+                     .store_int(workchain, 8)
+                     .store_uint(cell_hash(state_init), 256)
+                     .end_cell()
+                     .begin_parse();
+}
+
+slice calculate_user_rebase_jetton_wallet_address(slice owner_address, slice rebase_jetton_master_address, cell rebase_jetton_wallet_code) inline {
+  return calculate_rebase_jetton_wallet_address(calculate_rebase_jetton_wallet_state_init(owner_address, rebase_jetton_master_address, rebase_jetton_wallet_code));
+}
+
