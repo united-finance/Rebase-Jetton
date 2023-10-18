@@ -43,11 +43,11 @@
 }
 
 int _convert_to_shares(int total_supply, int total_shares, int balance) impure inline {
-    return muldivr(balance, total_shares + 1000000000, total_supply + 1);
+    return muldivr(balance, total_shares, total_supply);
 }
 
 int _convert_to_balance(int total_supply, int total_shares, int shares) impure inline {
-    return muldivr(shares, total_supply + 1, total_shares + 1000000000);
+    return muldivr(shares, total_supply, total_shares);
 }
 
 () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
