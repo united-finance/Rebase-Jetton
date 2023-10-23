@@ -10,7 +10,7 @@ const int gas_consumption = 10000000; ;; 0.01 TON
 
 {-
   Storage
-  storage#_ shares:Int owner_address:MsgAddressInt jetton_master_address:MsgAddressInt jetton_wallet_code:^Cell = Storage;
+  storage#_ shares:uint256 owner_address:MsgAddressInt rebase_jetton_master_address:MsgAddressInt rebase_jetton_wallet_code:^Cell = Storage;
 -}
 
 (int, slice, slice, cell) load_data() inline {
