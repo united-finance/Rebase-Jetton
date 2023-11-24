@@ -1,3 +1,4 @@
+#include "stdlib.fc";
 const int workchain = 0;
 
 () force_chain(slice addr) impure {

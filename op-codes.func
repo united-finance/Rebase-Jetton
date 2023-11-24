@@ -1,9 +1,0 @@
-const int op_transfer = 0x78dbf678;
-const int op_transfer_notification =  0x908ab97b;
-const int op_internal_transfer = 0x0a0f82fe;
-const int op_excesses = 0xd53276db;
-const int op_burn = 0xbff0cb8c;
-const int op_burn_notification = 0x25694d77;
-const int op_mint = 21;
-const int op_getter_balance = 0xf8488f00;
-const int op_getter_balance_notification = 0x641bd962;
