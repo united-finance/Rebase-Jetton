@@ -144,7 +144,7 @@ int _convert_to_balance(int total_supply, int total_shares, int shares) impure i
     throw(0xffff);
 }
 
-(int, int, int, slice, cell, cell) get_jetton_data() method_id {
+(int, int, int, slice, cell, cell) get_rebase_jetton_data() method_id {
     (int total_supply, int total_shares, slice admin_address, cell content, cell rebase_jetton_wallet_code) = load_data();
     return (total_supply, total_shares, -1, admin_address, content, rebase_jetton_wallet_code);
 }
@@ -154,12 +154,12 @@ slice get_wallet_address(slice owner_address) method_id {
     return calculate_user_rebase_jetton_wallet_address(owner_address, my_address(), rebase_jetton_wallet_code);
 }
 
-int get_jetton_balance(int shares) method_id  {
+int get_balance(int shares) method_id  {
     (int total_supply, int total_shares, slice admin_address, cell content, cell rebase_jetton_wallet_code) = load_data();
     return _convert_to_balance(total_supply,total_shares, shares);
 }
 
-int get_jetton_shares(int balance) method_id {
+int get_shares(int balance) method_id {
     (int total_supply, int total_shares, slice admin_address, cell content, cell rebase_jetton_wallet_code) = load_data();
     return _convert_to_shares( total_supply,total_shares,balance);
 }
