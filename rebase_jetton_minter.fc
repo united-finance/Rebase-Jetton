@@ -116,7 +116,7 @@ int _convert_to_balance(int total_supply, int total_shares, int shares) impure i
         return ();
     }
 
-    if (op = op_change_supply) {
+    if (op == op_change_supply) {
         throw_unless(73, equal_slices(sender_address, admin_address));
         int new_total_supply = in_msg_body~load_coins();
 
